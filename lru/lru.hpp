@@ -22,11 +22,20 @@ public:
 namespace sjtu {
 template<class T>
 class double_list {
+private:
+	struct node {
+		T val;
+		node *prev, *next;
+		node (const T &v = T(), node *p = nullptr, node *n = nullptr) : val(v), prev(p), next(n) {}
+	};
+	node *head, *tail;
+	int len;
 public:
 	/**
 	 * elements
 	 * add whatever you want
 	 */
+	
 
 	// --------------------------
 	/**
@@ -38,6 +47,9 @@ public:
 	~double_list() {}
 
 	class iterator {
+	private:
+		node *ptr;
+		double_list *list;
 	public:
 		/**
 		 * elements
@@ -48,6 +60,7 @@ public:
 		 * the follows are constructors and destructors
 		 * you can also add some if needed.
 		 */
+		iterator(node *p = nullptr, double_list *l = nullptr) : ptr(p), list(l) {}
 		iterator() {}
 		iterator(const iterator &t) {}
 		~iterator() {}
@@ -55,43 +68,76 @@ public:
 		/**
 		 * iter++
 		 */
-		iterator operator++(int) {}
+		iterator operator++(int) {
+			iterator tmp=*this;
+			++(*this);
+			return tmp;
+		}
 		/**
 		 * ++iter
 		 */
-		iterator &operator++() {}
+		iterator &operator++() {
+			
+			if(ptr=list->tail) throw "invalid";
+			ptr=ptr->next;
+			return *this;
+		}
 		/**
 		 * iter--
 		 */
-		iterator operator--(int) {}
+		iterator operator--(int) {
+			iterator tmp=*this;
+			--(*this);
+			return tmp;
+		}
 		/**
 		 * --iter
 		 */
-		iterator &operator--() {}
+		iterator &operator--() {
+			
+			if(ptr=list->head) throw "invalid";
+			ptr=ptr->prev;
+			return *this;
+		}
 		
 		/**
 		 * if the iter didn't point to a value
 		 * throw " invalid"
 		 */
-		T &operator*() const {}
+		T &operator*() const {
+			if(ptr==list->tail) throw "invalid";
+			return ptr->val;
+		}
 		
 		/**
 		 * other operation
 		 */
-		T *operator->() const noexcept {}
-		bool operator==(const iterator &rhs) const {}
-		bool operator!=(const iterator &rhs) const {}
+		T *operator->() const noexcept {
+			if(ptr==list->tail) throw "invalid";
+			return &(ptr->val);
+		}
+		bool operator==(const iterator &rhs) const {
+			return ptr==rhs.ptr;
+		}
+		bool operator!=(const iterator &rhs) const {
+			return ptr!=rhs.ptr;
+		}
+		friend class double_list;
 	};
 	/**
 	 * return an iterator to the beginning
 	 */
-	iterator begin() {}
+	iterator begin() {
+		return iterator(head->next, this);
+	}
 	/**
 	 * return an iterator to the ending
 	 * in fact, it returns the iterator point to nothing,
 	 * just after the last element.
 	 */
-	iterator end() {}
+	iterator end() {
+		return iterator(tail, this);
+	}
 	/**
 	 * if the iter didn't point to anything, do nothing,
 	 * otherwise, delete the element pointed by the iter
@@ -103,20 +149,55 @@ public:
 	 *  or nothing if the list after the operation
 	 *  don't contain 2nd elememt.
 	 */
-	iterator erase(iterator pos) {}
+	iterator erase(iterator pos) {
+		if(pos.ptr==tail) return pos;
+		node *p=pos.ptr;
+		node *res=p->next;
+		p->prev->next=p->next;
+		p->next->prev=p->prev;
+		len--;
+		delete p;
+		return iterator(res, this);
+	}
 
 	/**
 	 * the following are operations of double list
 	 */
-	void insert_head(const T &val) {}
-	void insert_tail(const T &val) {}
-	void delete_head() {}
-	void delete_tail() {}
+	void insert_head(const T &val) {
+		node *p=new node(val, head, head->next);
+		head->next->prev=p;
+		head->next=p;
+		len++;
+	}
+	void insert_tail(const T &val) {
+		node *p=new node(val,tail->prev, tail);
+		tail->prev->next=p;
+		tail->prev=p;
+		len++;
+	}
+	void delete_head() {
+		if(head->next==tail) return;
+		node *p=head->next;
+		head->next=p->next;
+		p->next->prev=head;
+		delete p;
+		len--;
+	}
+	void delete_tail() {
+		if(tail->prev==head) return;
+		node *p=tail->prev;
+		tail->prev=p->prev;
+		p->prev->next=tail;
+		delete p;
+		len--;
+	}
 	/**
 	 * if didn't contain anything, return true,
 	 * otherwise false.
 	 */
-	bool empty() {}
+	bool empty() {
+		return len==0;
+	}
 };
 
 template<class Key, class T, class Hash = std::hash<Key>, class Equal = std::equal_to<Key>>
@@ -127,19 +208,37 @@ public:
 	 * elements
 	 * add whatever you want
 	 */
-
+private:
+	struct node {
+		value_type val;
+		node *next;
+		node(const value_type &v = value_type(), node *n = nullptr) : val(v), next(n) {}
+	};
+	node **table;
+	size_t size, capacity;
+	float load_factor;
+	Hash hasher;
+	Equal equal;
+	size_t hash(const Key &key) const {
+		return hasher(key) % capacity;
+	}
 	// --------------------------
 
 	/**
 	 * the follows are constructors and destructors
 	 * you can also add some if needed.
 	 */
+public:
 	hashmap() {}
 	hashmap(const hashmap &other) {}
 	~hashmap() {}
 	hashmap &operator=(const hashmap &other) {}
 
 	class iterator {
+	private:
+		node **table;
+		node *ptr;
+		hashmap *map;
 	public:
 		/**
 		 * elements
@@ -150,6 +249,7 @@ public:
 		 * the follows are constructors and destructors
 		 * you can also add some if needed.
 		 */
+		iterator(node **t = nullptr, node *p = nullptr, hashmap *m = nullptr) : table(t), ptr(p), map(m) {}
 		iterator() {}
 		iterator(const iterator &t) {}
 		~iterator() {}
@@ -158,49 +258,133 @@ public:
 		 * if point to nothing
 		 * throw
 		 */
-		value_type &operator*() const {}
+		value_type &operator*() const {
+			if(ptr==nullptr) throw "invalid";
+			return ptr->val;
+		}
 
 		/**
 		 * other operation
 		 */
-		value_type *operator->() const noexcept {}
-		bool operator==(const iterator &rhs) const {}
-		bool operator!=(const iterator &rhs) const {}
+		value_type *operator->() const noexcept {
+			return &(ptr->val);
+		}
+		bool operator==(const iterator &rhs) const {
+			return ptr==rhs.ptr;
+		}
+		bool operator!=(const iterator &rhs) const {
+			return ptr!=rhs.ptr;
+		}
 	};
 
-	void clear() {}
+	void clear() {
+		for(size_t i=0;i<capacity;i++) {
+			node *p=table[i];
+			while(p) {
+				node *next=p->next;
+				delete p;
+				p=next;
+			}
+			table[i]=nullptr;
+		}
+		size=0;
+	}
 	/**
 	 * you need to expand the hashmap dynamically
 	 */
-	void expand() {}
+	
+	void expand() {
+		size_t new_capacity=capacity*2;
+		node **new_table=new node*[new_capacity];
+		for(size_t i=0;i<new_capacity;i++) new_table[i]=nullptr;
+		for(size_t i=0;i<capacity;i++) {
+			node *p=table[i];
+			while(p) {
+				node *next=p->next;
+				size_t index=hasher(p->val.first)%new_capacity;
+				p->next=new_table[index];
+				new_table[index]=p;
+				p=next;
+			}
+		}
+		delete [] table;
+		table=new_table;
+		capacity=new_capacity;
+	}
 
 	/**
 	 * the iterator point at nothing
 	 */
-	iterator end() const {}
+	iterator end() const {
+		return iterator(table, nullptr, const_cast<hashmap*>(this));
+	}
 	/**
 	 * find, return a pointer point to the value
 	 * not find, return the end (point to nothing)
 	 */
-	iterator find(const Key &key) const {}
+	iterator find(const Key &key) const {
+		size_t index=hash(key);
+		node *p=table[index];
+		while(p) {
+			if(equal(p->val.first, key)) return iterator(table, p, const_cast<hashmap*>(this));
+			p=p->next;
+		}
+		return end();
+	}
 	/**
 	 * already have a value_pair with the same key
 	 * -> just update the value, return false
 	 * not find a value_pair with the same key
 	 * -> insert the value_pair, return true
 	 */
-	sjtu::pair<iterator, bool> insert(const value_type &value_pair) {}
+	sjtu::pair<iterator, bool> insert(const value_type &value_pair) {
+		iterator it=find(value_pair.first);
+		if(it!=end()) {
+			it->second=value_pair.second;
+			return sjtu::make_pair(it, false);
+		}
+		if(size+1>capacity*load_factor) expand();
+		size_t index=hash(value_pair.first);
+		node *p=new node(value_pair, table[index]);
+		table[index]=p;
+		size++;
+		return sjtu::make_pair(iterator(table, p, this), true);
+	}
 	/**
 	 * the value_pair exists, remove and return true
 	 * otherwise, return false
 	 */
-	bool remove(const Key &key) {}
+	bool remove(const Key &key) {
+		size_t index=hash(key);
+		node *p=table[index], *prev=nullptr;
+		while(p) {
+			if(equal(p->val.first, key)) {
+				if(prev) prev->next=p->next;
+				else table[index]=p->next;
+				delete p;
+				size--;
+				return true;
+			}
+			prev=p;
+			p=p->next;
+		}
+		return false;
+	}
 };
 
 template<class Key, class T, class Hash = std::hash<Key>, class Equal = std::equal_to<Key>>
 class linked_hashmap : public hashmap<Key, T, Hash, Equal> {
 public:
 	typedef pair<const Key, T> value_type;
+private:
+	struct Listnode{
+		value_type *data_ptr;
+		Listnode *prev, *next;
+		Listnode(const value_type *ptr = nullptr, Listnode *p = nullptr, Listnode *n = nullptr) : data_ptr(ptr), prev(p), next(n) {}
+	};
+	Listnode *list_head, *list_tail;
+	size list_len;
+public:
 	/**
 	 * elements
 	 * add whatever you want
@@ -208,12 +392,16 @@ public:
 	// --------------------------
 	class const_iterator;
 	class iterator {
+	private:
+		Listnode *ptr;
+		linked_hashmap *map;
 	public:
 		/**
 		 * elements
 		 * add whatever you want
 		 */
 		// --------------------------
+		iterator(Listnode *p = nullptr, linked_hashmap *m = nullptr) : ptr(p), map(m) {}
 		iterator() {}
 		iterator(const iterator &other) {}
 		~iterator() {}
@@ -221,34 +409,65 @@ public:
 		/**
 		 * iter++
 		 */
-		iterator operator++(int) {}
+		iterator operator++(int) {
+			iterator tmp=*this;
+			++(*this);
+			return tmp;
+		}
 		/**
 		 * ++iter
 		 */
-		iterator &operator++() {}
+		iterator &operator++() {
+			if(ptr==map->list_tail) throw "invalid";
+			ptr=ptr->next;
+			return *this;
+		}
 		/**
 		 * iter--
 		 */
-		iterator operator--(int) {}
+		iterator operator--(int) {
+			iterator tmp=*this;
+			--(*this);
+			return tmp;
+		}
 		/**
 		 * --iter
 		 */
-		iterator &operator--() {}
+		iterator &operator--() {
+			if(ptr==map->list_head) throw "invalid";
+			ptr=ptr->prev;
+			return *this;
+		}
 
 		/**
 		 * if the iter didn't point to a value
 		 * throw "star invalid"
 		 */
-		value_type &operator*() const {}
-		value_type *operator->() const noexcept {}
+		value_type &operator*() const {
+			if(ptr==map->list_tail) throw "invalid";
+			return *(ptr->data_ptr);
+		}
+		value_type *operator->() const noexcept {
+			return ptr->data_ptr;
+		}
 
 		/**
 		 * operator to check whether two iterators are same (pointing to the same memory).
 		 */
-		bool operator==(const iterator &rhs) const {}
-		bool operator!=(const iterator &rhs) const {}
-		bool operator==(const const_iterator &rhs) const {}
-		bool operator!=(const const_iterator &rhs) const {}
+		bool operator==(const iterator &rhs) const {
+			return ptr==rhs.ptr;
+		}
+		bool operator!=(const iterator &rhs) const {
+			return ptr!=rhs.ptr;
+		}
+		bool operator==(const const_iterator &rhs) const {
+			return ptr==rhs.ptr;
+		}
+		bool operator!=(const const_iterator &rhs) const {
+			return ptr!=rhs.ptr;
+		}
+		friend class const_iterator;
+		friend class linked_hashmap;
 	};
 
 	class const_iterator {
