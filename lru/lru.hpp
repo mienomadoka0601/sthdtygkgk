@@ -390,6 +390,28 @@ public:
 	 * add whatever you want
 	 */
 	// --------------------------
+	bool move_to_front(const Key &key){
+		auto it=find(key);
+		if(it==end()) return false;
+		value_type data=*it;
+		remove(it);
+		insert(data);
+		return true;
+	}
+	void insert_to_front(const value_type &value) {
+		auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
+		if(hash_result.second){
+			Listnode *new_node=new Listnode(const_cast<value_type*>(&(hash_result.first.operator->())));
+			new_node->prev=list_head;
+			new_node->next=list_head->next;
+			list_head->next->prev=new_node;
+			list_head->next=new_node;
+			list_len++;
+		}
+		else {
+			move_to_front(value.first);
+		}
+	}
 	class const_iterator;
 	class iterator {
 	private:
@@ -471,82 +493,184 @@ public:
 	};
 
 	class const_iterator {
+	private:
+		const Listnode *node;
+		const linked_hashmap *map;
 	public:
 		/**
 		 * elements
 		 * add whatever you want
 		 */
 		// --------------------------
+		const_iterator(const Listnode *p = nullptr, const linked_hashmap *m = nullptr) : node(p), map(m) {}
+		const_iterator(const const_iterator &it) : node(it.node), map(it.map) {}
 		const_iterator() {}
 		const_iterator(const iterator &other) {}
 
 		/**
 		 * iter++
 		 */
-		const_iterator operator++(int) {}
+		const_iterator operator++(int) {
+			const_iterator tmp=*this;
+			++(*this);
+			return tmp;
+		}
 		/**
 		 * ++iter
 		 */
-		const_iterator &operator++() {}
+		const_iterator &operator++() {
+			if(node==map->list_tail) throw "invalid";
+			node=node->next;
+			return *this;
+		}
 		/**
 		 * iter--
 		 */
-		const_iterator operator--(int) {}
+		const_iterator operator--(int) {
+			const_iterator tmp=*this;
+			--(*this);
+			return tmp;
+			
+		}
 		/**
 		 * --iter
 		 */
-		const_iterator &operator--() {}
+		const_iterator &operator--() {
+			if(node==map->list_head->next) throw "invalid";
+			node=node->prev;
+			return *this;
+		}
 
 		/**
 		 * if the iter didn't point to a value
 		 * throw
 		 */
-		const value_type &operator*() const {}
-		const value_type *operator->() const noexcept {}
+		const value_type &operator*() const {
+			if(node==map->list_tail) throw "invalid";
+			return *(node->data_ptr);
+		}
+		const value_type *operator->() const noexcept {
+			return node->data_ptr;
+		}
 
 		/**
 		 * operator to check whether two iterators are same (pointing to the same memory).
 		 */
-		bool operator==(const iterator &rhs) const {}
-		bool operator!=(const iterator &rhs) const {}
-		bool operator==(const const_iterator &rhs) const {}
-		bool operator!=(const const_iterator &rhs) const {}
+		bool operator==(const iterator &rhs) const {
+			return node==rhs.ptr;
+		}
+		bool operator!=(const iterator &rhs) const {
+			return node!=rhs.ptr;
+		}
+		bool operator==(const const_iterator &rhs) const {
+			return node==rhs.node;
+		}
+		bool operator!=(const const_iterator &rhs) const {
+			return node!=rhs.node;
+		}
 	};
 
-	linked_hashmap() {}
-	linked_hashmap(const linked_hashmap &other) {}
-	~linked_hashmap() {}
-	linked_hashmap &operator=(const linked_hashmap &other) {}
+	linked_hashmap() {
+		list_head=new Listnode();
+		list_tail=new Listnode();
+		list_head->next=list_tail;
+		list_tail->prev=list_head;
+		list_len=0;
+	}
+	linked_hashmap(const linked_hashmap &other) {
+		list_head=new Listnode();
+		list_tail=new Listnode();
+		list_head->next=list_tail;
+		list_tail->prev=list_head;
+		list_len=0;
+		for(const_iterator it=other.cbegin();it!=other.cend();++it) {
+			insert(*it);
+		}
+	}
+	~linked_hashmap() {
+		clear();
+		delete list_head;
+		delete list_tail;
+	}
+	linked_hashmap &operator=(const linked_hashmap &other) {
+		if(this==&other) return *this;
+		clear();
+		hashmap<Key, T, Hash, Equal>::operator=(other);
+		for(const_iterator it=other.cbegin();it!=other.cend();++it) {
+			insert(*it);
+		}
+		return *this;
+	}
 
 	/**
 	 * return the value connected with the Key(O(1))
 	 * if the key not found, throw
 	 */
-	T &at(const Key &key) {}
-	const T &at(const Key &key) const {}
-	T &operator[](const Key &key) {}
-	const T &operator[](const Key &key) const {}
+	T &at(const Key &key) {
+		iterator it=find(key);
+		if(it==end()) throw "invalid";
+		return it->second;
+	}
+	const T &at(const Key &key) const {
+		auto it=const_cast<linked_hashmap*>(this)->find(key);
+		if(it==end()) throw "invalid";
+		return it->second;
+	}
+	T &operator[](const Key &key) {
+		iterator it=find(key);
+		if(it==end()) {
+            auto result=insert({key, T()});
+            return result.first->second;
+		}
+		return it->second;
+	}
+	const T &operator[](const Key &key) const {
+		return at(key);
+	}
 
 	/**
 	 * return an iterator point to the first
 	 * inserted and existed element
 	 */
-	iterator begin() {}
-	const_iterator cbegin() const {}
+	iterator begin() {
+		return iterator(list_head->next, this);
+	}
+	const_iterator cbegin() const {
+		return const_iterator(list_head->next, this);
+	}
 	/**
 	 * return an iterator after the last inserted element
 	 */
-	iterator end() {}
-	const_iterator cend() const {}
+	iterator end() {
+		return iterator(list_tail, this);
+	}
+	const_iterator cend() const {
+		return const_iterator(list_tail, this);
+	}
 	/**
 	 * if didn't contain anything, return true,
 	 * otherwise false.
 	 */
-	bool empty() const {}
+	bool empty() const {
+		return list_len==0;
+	}
 
-	void clear() {}
+	void clear() {
+		Listnode *p=list_head->next;
+		while(p!=list_tail) {
+			Listnode *next=p->next;
+			delete p;
+			p=next;
+		}
+		list_head->next=list_tail;
+		list_tail->prev=list_head;
+		list_len=0;
+		hashmap<Key, T, Hash, Equal>::clear();
+	}
 
-	size_t size() const {}
+	size_t size() const {
+		return list_len;
+	}
 	/**
 	 * insert the value_piar
 	 * if the key of the value_pair exists in the map
@@ -557,50 +681,126 @@ public:
 	 * if the key of the value_pair doesn't exist in the map
 	 * add a new element and return true
 	 */
-	pair<iterator, bool> insert(const value_type &value) {}
+	pair<iterator, bool> insert(const value_type &value) {
+		auto hash_result=hashmap<Key, T, Hash, Equal>::insert(value);
+		if(hash_result.second){
+			Listnode *new_node=new Listnode(const_cast<value_type*>(&(hash_result.first.operator->())));
+			new_node->prev=list_tail->prev;
+			new_node->next=list_tail;
+			list_tail->prev->next=new_node;
+			list_tail->prev=new_node;
+			list_len++;
+			return {iterator(new_node, this), true};
+		}
+		else{
+			return {find(value.first), false};
+		}
+	}
 	/**
 	 * erase the value_pair pointed by the iterator
 	 * if the iterator points to nothing
 	 * throw
 	 */
-	void remove(iterator pos) {}
+	void remove(iterator pos) {
+		if(pos==end()) throw "invalid";
+		hashmap<Key, T, Hash, Equal>::remove(p->data_ptr->first);
+		Listnode *p=pos.ptr;
+		p->prev->next=p->next;
+		p->next->prev=p->prev;
+		delete p;
+		list_len--;
+	}
 	/**
 	 * return how many value_pairs consist of key
 	 * this should only return 0 or 1
 	 */
-	size_t count(const Key &key) const {}
+	size_t count(const Key &key) const {
+		return const_cast<linked_hashmap*>(this)->find(key) != end() ? 1 : 0;
+	}
 	/**
 	 * find the iterator points at the value_pair
 	 * which consist of key
 	 * if not find, return the iterator
 	 * point at nothing
 	 */
-	iterator find(const Key &key) {}
+	iterator find(const Key &key) {
+		iterator it=hashmap<Key, T, Hash, Equal>::find(key);
+		if(it==hashmap<Key, T, Hash, Equal>::end()) return end();
+		Listnode *p=list_head->next;
+		while(p!=list_tail) {
+			if(p->data_ptr==&(it->first)) return iterator(p, this);
+			p=p->next;
+		}
+		return end();
+	}
 };
 
 class lru {
 	using lmap = sjtu::linked_hashmap<Integer, Matrix<int>, Hash, Equal>;
 	using value_type = sjtu::pair<const Integer, Matrix<int>>;
+private:
+	lmap *memory;
+	int capacity;
 
 public:
-	lru(int size) {}
-	~lru() {}
+	lru(int size) : capacity(size) {
+		memory=new lmap();
+	}
+	~lru() {
+		delete memory;
+	}
+	lru(const lru &other) = delete;
+    lru &operator=(const lru &other) = delete;
 	/**
 	 * save the value_pair in the memory
 	 * delete something in the memory if necessary
 	 */
-	void save(const value_type &v) const {}
+	void save(const value_type &v) const {
+		Integer key=v.first;
+		Matrix<int> value=v.second;
+		auto it=memory->find(key);
+		if(it!=memory->end()) {
+			Matrix<int> new_value=value;
+			memory->remove(it);
+			memory->insert({key, new_value});
+		}
+		else{
+			if(memory->size()>=capacity) {
+				if(!memory->empty()){
+					auto last_it=memory->end();
+					--last_it;
+					memory->remove(last_it);
+				}
+			}
+			memory->insert({key, value});
+		}
+		
+	}
 	/**
 	 * return a pointer contain the value
 	 */
-	Matrix<int> *get(const Integer &v) const {}
+	Matrix<int> *get(const Integer &v) const {
+		auto it=memory->find(v);
+		if(it==memory->end()) return nullptr;
+		Integer key=it->first;
+		Matrix<int> value=it->second;
+		memory->remove(it);
+		memory->insert({key, value});
+		auto new_it=memory->find(key);
+		if(new_it!=memory->end()) return &(new_it->second);
+		else return nullptr;
+	}
 	/**
 	 * just print everything in the memory
 	 * to debug or test.
 	 * this operation follows the order, but don't
 	 * change the order.
 	 */
-	void print() {}
+	void print() {
+		for(auto it=memory->begin();it!=memory->end();++it) {
+			std::cout<<it->first.val<<" "<<it->second<<std::endl;
+		}
+	}
 };
 } // namespace sjtu
 
