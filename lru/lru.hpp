@@ -26,7 +26,7 @@ private:
 	struct node {
 		T *val;
 		node *prev, *next;
-		node() : prev(nullptr), next(nullptr) {}
+		node() : val(nullptr), prev(nullptr), next(nullptr) {}
 		node(const T &v, node *p, node *n) : val(new T(v)), prev(p), next(n) {}
 		~node() { delete val; }
 	};
