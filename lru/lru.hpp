@@ -217,7 +217,8 @@ private:
 		value_type val;
 		node *next;
 		void *listnode;
-		node(const value_type &v = value_type(), node *n = nullptr) : val(v), next(n) {}
+		node(const value_type &v = value_type(), node *n = nullptr) 
+        : val(v), next(n), listnode(nullptr) {}
 	};
 	node **table;
 	size_t size, capacity;
@@ -311,6 +312,7 @@ public:
 		 */
 		iterator(node **t = nullptr, node *p = nullptr, hashmap *m = nullptr) : table(t), ptr(p), map(m) {}
 		~iterator() {}
+		node *get_ptr() const { return ptr; }
 
 		/**
 		 * if point to nothing
@@ -449,25 +451,35 @@ public:
 	 */
 	// --------------------------
 	bool move_to_front(const Key &key){
-		auto it=find(key);
-		if(it==end()) return false;
-		value_type data=*it;
-		remove(it);
-		insert(data);
-		return true;
-	}
+    auto it = find(key);
+    if(it == end()) return false;
+    value_type data = *it;
+    remove(it);
+    auto hash_result = hashmap<Key, T, Hash, Equal>::insert(data);
+    Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_head, list_head->next);
+    list_head->next->prev = new_node;
+    list_head->next = new_node;
+    list_len++;
+    hash_result.first.get_ptr()->listnode = new_node;
+    return true;
+}
 	void insert_to_front(const value_type &value) {
-		auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
-		if(hash_result.second){
-			Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_head, list_head->next);
-			list_head->next->prev=new_node;
-			list_head->next=new_node;
-			list_len++;
-		}
-		else {
-			move_to_front(value.first);
-		}
-	}
+    auto it = find(value.first);
+    if(it != end()) {
+        move_to_front(value.first);
+        auto new_it = find(value.first);
+        if(new_it != end()) {
+            new_it->second = value.second;
+        }
+    } else {
+        auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
+        Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_head, list_head->next);
+        list_head->next->prev = new_node;
+        list_head->next = new_node;
+        list_len++;
+        hash_result.first.get_ptr()->listnode = new_node;
+    }
+}
 	class const_iterator;
 	class iterator {
 	private:
@@ -510,7 +522,7 @@ public:
 		 * --iter
 		 */
 		iterator &operator--() {
-			if(ptr==map->list_head || ptr==nullptr) throw "invalid";
+			if(ptr==map->list_head->next || ptr==nullptr) throw "invalid";
 			ptr=ptr->prev;
 			return *this;
 		}
@@ -589,7 +601,7 @@ public:
 		 * --iter
 		 */
 		const_iterator &operator--() {
-			if(node==map->list_head->next) throw "invalid";
+			if(node==map->list_head->next || node==nullptr) throw "invalid";
 			node=node->prev;
 			return *this;
 		}
@@ -648,7 +660,6 @@ public:
 	linked_hashmap &operator=(const linked_hashmap &other) {
 		if(this==&other) return *this;
 		clear();
-		hashmap<Key, T, Hash, Equal>::operator=(other);
 		for(const_iterator it=other.cbegin();it!=other.cend();++it) {
 			insert(*it);
 		}
@@ -748,7 +759,7 @@ public:
 			list_tail->prev->next=new_node;
 			list_tail->prev=new_node;
 			list_len++;
-			hash_result.first.ptr->list_node = new_node;
+			hash_result.first.get_ptr()->listnode = new_node;
 			return {iterator(new_node, this), true};
 		}
 		else{
@@ -785,19 +796,21 @@ public:
 	iterator find(const Key &key) {
 		auto hash_result=hashmap<Key, T, Hash, Equal>::find(key);
 		if(hash_result==hashmap<Key, T, Hash, Equal>::end()) return end();
-		Listnode *list_node = static_cast<Listnode*>(hash_it.ptr->list_node);
+		if(hash_result.get_ptr()->listnode == nullptr) {
+        throw "invalid";
+    }
+		Listnode *list_node = static_cast<Listnode*>(hash_result.get_ptr()->listnode);
     	return iterator(list_node, this);
 	}
 	const_iterator find(const Key &key) const {
     auto hash_result = hashmap<Key, T, Hash, Equal>::find(key);
     if(hash_result == hashmap<Key, T, Hash, Equal>::end()) return end();
-    Listnode *p = list_head->next;
-    while(p != list_tail) {
-        if(p->data_ptr == &(*hash_result)) return const_iterator(p, this);
-        p = p->next;
+	if(hash_result.get_ptr()->listnode == nullptr) {
+        throw "invalid";
     }
-    return end();
-}
+    Listnode *list_node = static_cast<Listnode*>(hash_result.get_ptr()->listnode);
+    return const_iterator(list_node, this);
+	}
 };
 
 class lru {
