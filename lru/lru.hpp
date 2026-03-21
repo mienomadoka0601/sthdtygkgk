@@ -742,8 +742,7 @@ public:
 	pair<iterator, bool> insert(const value_type &value) {
 		auto hash_result=hashmap<Key, T, Hash, Equal>::insert(value);
 		if(hash_result.second){
-			Listnode *new_node=new Listnode(const_cast<value_type*>(&(hash_result.first.operator->())));
-			new_node->prev=list_tail->prev;
+			Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_tail->prev, list_tail);
 			new_node->next=list_tail;
 			list_tail->prev->next=new_node;
 			list_tail->prev=new_node;
@@ -786,7 +785,7 @@ public:
 		if(hash_result==hashmap<Key, T, Hash, Equal>::end()) return end();
 		Listnode *p=list_head->next;
 		while(p!=list_tail) {
-			if(p->data_ptr==&(it->first)) return iterator(p, this);
+			if(p->data_ptr==&(hash_result->first)) return iterator(p, this);
 			p=p->next;
 		}
 		return end();
