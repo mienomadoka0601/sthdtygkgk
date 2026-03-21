@@ -61,7 +61,11 @@ public:
         	insert_tail(*it);
     	}
 	}
-	~double_list() {}
+	~double_list() {
+		clear();
+		delete head;
+		delete tail;
+	}
 
 	class iterator {
 	private:
