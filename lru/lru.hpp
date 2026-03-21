@@ -49,7 +49,16 @@ public:
 		tail->prev=head;
 		len=0;
 	}
-	double_list(const double_list<T> &other) {}
+	double_list(const double_list<T> &other) {
+		head = new node();
+    	tail = new node();
+    	head->next = tail;
+    	tail->prev = head;
+    	len = 0;
+    	for(auto it = other.begin(); it != other.end(); ++it) {
+        	insert_tail(*it);
+    	}
+	}
 	~double_list() {}
 
 	class iterator {
@@ -255,6 +264,7 @@ public:
 			node *tail=nullptr;
 			while(p) {
 				node *new_node = new node(p->val, nullptr);
+				new_node->listnode = p->listnode;
     			if(tail) tail->next = new_node;
     			else table[i] = new_node;
     			tail = new_node;
@@ -682,10 +692,7 @@ public:
 	}
 	T &operator[](const Key &key) {
 		iterator it=find(key);
-		if(it==end()) {
-            auto result=insert({key, T()});
-            return result.first->second;
-		}
+		if(it==end()) throw "invalid";
 		return it->second;
 	}
 	const T &operator[](const Key &key) const {
