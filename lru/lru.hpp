@@ -475,31 +475,7 @@ public:
 	 * add whatever you want
 	 */
 	// --------------------------
-	void move_to_front(const Key &key){
-    	auto it = find(key);
-    	if(it == end()) return;
-    	value_type data = *it;
-    	remove(it);
-		order_list.insert_head(data);
-        auto head = order_list.begin();
-        pos_map.insert({key, head});
-        hashmap<Key, T, Hash, Equal>::insert(data);
-	}
-	void insert_to_front(const value_type &value) {
-    auto it = find(value.first);
-    if(it != end()) {
-        move_to_front(value.first);
-        auto new_it = find(value.first);
-        if(new_it != end()) {
-            new_it->second = value.second;
-        }
-    } else {
-        auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
-        order_list.insert_head(value);
-        auto head = order_list.begin();
-        pos_map.insert({value.first, head});
-    }
-}
+	
 	class const_iterator;
 	class iterator {
 	private:
@@ -755,9 +731,17 @@ public:
 		}
 		else{
 			auto it = find(value.first);
-            it->second = value.second;
+            if(it!=end()) {
+                it->second = value.second;
+            }
             return {it, false};
 		}
+	}
+	void insert_head(const value_type &value) {
+    	auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
+    	order_list.insert_head(value);
+    	auto head = order_list.begin();
+    	pos_map.insert({value.first, head});
 	}
 	/**
 	 * erase the value_pair pointed by the iterator
@@ -816,40 +800,29 @@ public:
 	 * delete something in the memory if necessary
 	 */
 	void save(const value_type &v) {
-		Integer key=v.first;
-		Matrix<int> value=v.second;
-		auto it=memory->find(key);
-		if(it!=memory->end()) {
-			Matrix<int> new_value=value;
-			memory->remove(it);
-			memory->insert_to_front({key, new_value});
-		}
-		else{
-			if(memory->size()>=capacity) {
-				if(!memory->empty()){
-					auto last_it=memory->end();
-					--last_it;
-					memory->remove(last_it);
-				}
-			}
-			memory->insert_to_front({key, value});
-		}
-		
-	}
+    auto it = memory->find(v.first);
+    if (it != memory->end()) {
+        memory->remove(it);
+    } else if (memory->size() >= capacity && !memory->empty()) {
+        auto last_it = memory->end();
+        --last_it;
+        memory->remove(last_it);
+    }
+    memory->insert_head(v);
+}
 	/**
 	 * return a pointer contain the value
 	 */
-	Matrix<int> *get(const Integer &v)  {
-		auto it=memory->find(v);
-		if(it==memory->end()) return nullptr;
-		Integer key=it->first;
-		Matrix<int> val=it->second;
-		memory->remove(it);
-		memory->insert_to_front({key, val});
-		auto new_it=memory->find(key);
-		if(new_it!=memory->end()) return &(new_it->second);
-		else return nullptr;
-	}
+	Matrix<int> *get(const Integer &v) {
+    auto it = memory->find(v);
+    if (it == memory->end()) return nullptr;
+    Matrix<int> value = it->second;
+    memory->remove(it);
+    memory->insert_head({v, value});
+    auto new_it = memory->find(v);
+    if (new_it != memory->end()) return &(new_it->second);
+    return nullptr;
+}
 	/**
 	 * just print everything in the memory
 	 * to debug or test.
