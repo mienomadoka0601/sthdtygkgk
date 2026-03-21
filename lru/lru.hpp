@@ -82,7 +82,7 @@ public:
 		 */
 		iterator &operator++() {
 			
-			if(ptr==list->tail) throw "invalid";
+			if(ptr==list->tail || ptr==nullptr ) throw "invalid";
 			ptr=ptr->next;
 			return *this;
 		}
@@ -99,7 +99,7 @@ public:
 		 */
 		iterator &operator--() {
 			
-			if(ptr==list->head->next) throw "invalid";
+			if(ptr==list->head->next || ptr==nullptr) throw "invalid";
 			ptr=ptr->prev;
 			return *this;
 		}
@@ -109,7 +109,7 @@ public:
 		 * throw " invalid"
 		 */
 		T &operator*() const {
-			if(ptr==list->tail) throw "invalid";
+			if(ptr==list->tail || ptr==nullptr) throw "invalid";
 			return ptr->val;
 		}
 		
@@ -117,7 +117,7 @@ public:
 		 * other operation
 		 */
 		T *operator->() const noexcept {
-			if(ptr==list->tail) throw "invalid";
+			if(ptr==list->tail || ptr==nullptr) throw "invalid";
 			return &(ptr->val);
 		}
 		bool operator==(const iterator &rhs) const {
@@ -216,6 +216,7 @@ private:
 	struct node {
 		value_type val;
 		node *next;
+		void *listnode;
 		node(const value_type &v = value_type(), node *n = nullptr) : val(v), next(n) {}
 	};
 	node **table;
@@ -493,7 +494,7 @@ public:
 		 * ++iter
 		 */
 		iterator &operator++() {
-			if(ptr==map->list_tail) throw "invalid";
+			if(ptr==map->list_tail || ptr==nullptr) throw "invalid";
 			ptr=ptr->next;
 			return *this;
 		}
@@ -509,7 +510,7 @@ public:
 		 * --iter
 		 */
 		iterator &operator--() {
-			if(ptr==map->list_head) throw "invalid";
+			if(ptr==map->list_head || ptr==nullptr) throw "invalid";
 			ptr=ptr->prev;
 			return *this;
 		}
@@ -519,7 +520,7 @@ public:
 		 * throw "star invalid"
 		 */
 		value_type &operator*() const {
-			if(ptr==map->list_tail) throw "invalid";
+			if(ptr==map->list_tail || ptr==nullptr) throw "invalid";
 			return *(ptr->data_ptr);
 		}
 		value_type *operator->() const noexcept {
@@ -571,7 +572,7 @@ public:
 		 * ++iter
 		 */
 		const_iterator &operator++() {
-			if(node==map->list_tail) throw "invalid";
+			if(node==map->list_tail || node==nullptr) throw "invalid";
 			node=node->next;
 			return *this;
 		}
@@ -598,7 +599,7 @@ public:
 		 * throw
 		 */
 		const value_type &operator*() const {
-			if(node==map->list_tail) throw "invalid";
+			if(node==map->list_tail || node==nullptr) throw "invalid";
 			return *(node->data_ptr);
 		}
 		const value_type *operator->() const noexcept {
@@ -747,6 +748,7 @@ public:
 			list_tail->prev->next=new_node;
 			list_tail->prev=new_node;
 			list_len++;
+			hash_result.first.ptr->list_node = new_node;
 			return {iterator(new_node, this), true};
 		}
 		else{
@@ -759,7 +761,7 @@ public:
 	 * throw
 	 */
 	void remove(iterator pos) {
-		if(pos.ptr==list_tail) throw "invalid";
+		if(pos.ptr==list_tail || pos.ptr==nullptr) throw "invalid";
 		Listnode *p=pos.ptr;
 		hashmap<Key, T, Hash, Equal>::remove(p->data_ptr->first);
 		p->prev->next=p->next;
@@ -783,12 +785,8 @@ public:
 	iterator find(const Key &key) {
 		auto hash_result=hashmap<Key, T, Hash, Equal>::find(key);
 		if(hash_result==hashmap<Key, T, Hash, Equal>::end()) return end();
-		Listnode *p=list_head->next;
-		while(p!=list_tail) {
-			if(p->data_ptr==&(*hash_result)) return iterator(p, this);
-			p=p->next;
-		}
-		return end();
+		Listnode *list_node = static_cast<Listnode*>(hash_it.ptr->list_node);
+    	return iterator(list_node, this);
 	}
 	const_iterator find(const Key &key) const {
     auto hash_result = hashmap<Key, T, Hash, Equal>::find(key);
