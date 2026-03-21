@@ -26,6 +26,7 @@ private:
 	struct node {
 		T val;
 		node *prev, *next;
+		node() : prev(nullptr), next(nullptr) {}
 		node (const T &v = T(), node *p = nullptr, node *n = nullptr) : val(v), prev(p), next(n) {}
 	};
 	node *head, *tail;
@@ -208,8 +209,11 @@ public:
 	 * if didn't contain anything, return true,
 	 * otherwise false.
 	 */
-	bool empty() {
+	bool empty() const {
 		return len==0;
+	}
+	int size() const {
+		return len;
 	}
 };
 
@@ -447,32 +451,24 @@ class linked_hashmap : public hashmap<Key, T, Hash, Equal> {
 public:
 	typedef pair<const Key, T> value_type;
 private:
-	struct Listnode{
-		value_type *data_ptr;
-		Listnode *prev, *next;
-		Listnode(value_type *ptr = nullptr, Listnode *p = nullptr, Listnode *n = nullptr) : data_ptr(ptr), prev(p), next(n) {}
-	};
-	Listnode *list_head, *list_tail;
-	size_t list_len;
+	double_list<value_type> order_list;
+    hashmap<Key, typename double_list<value_type>::iterator, Hash, Equal> pos_map;
 public:
 	/**
 	 * elements
 	 * add whatever you want
 	 */
 	// --------------------------
-	bool move_to_front(const Key &key){
-    auto it = find(key);
-    if(it == end()) return false;
-    value_type data = *it;
-    remove(it);
-    auto hash_result = hashmap<Key, T, Hash, Equal>::insert(data);
-    Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_head, list_head->next);
-    list_head->next->prev = new_node;
-    list_head->next = new_node;
-    list_len++;
-    hash_result.first.get_ptr()->listnode = new_node;
-    return true;
-}
+	void move_to_front(const Key &key){
+    	auto it = find(key);
+    	if(it == end()) return;
+    	value_type data = *it;
+    	remove(it);
+		order_list.insert_head(data);
+        auto head = order_list.begin();
+        pos_map.insert({key, head});
+        hashmap<Key, T, Hash, Equal>::insert(data);
+	}
 	void insert_to_front(const value_type &value) {
     auto it = find(value.first);
     if(it != end()) {
@@ -483,17 +479,15 @@ public:
         }
     } else {
         auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
-        Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_head, list_head->next);
-        list_head->next->prev = new_node;
-        list_head->next = new_node;
-        list_len++;
-        hash_result.first.get_ptr()->listnode = new_node;
+        order_list.insert_head(value);
+        auto head = order_list.begin();
+        pos_map.insert({value.first, head});
     }
 }
 	class const_iterator;
 	class iterator {
 	private:
-		Listnode *ptr;
+		typename double_list<value_type>::iterator ptr;
 		linked_hashmap *map;
 	public:
 		/**
@@ -501,7 +495,8 @@ public:
 		 * add whatever you want
 		 */
 		// --------------------------
-		iterator(Listnode *p = nullptr, linked_hashmap *m = nullptr) : ptr(p), map(m) {}
+		iterator(typename double_list<value_type>::iterator it = typename double_list<value_type>::iterator(), 
+                 linked_hashmap *m = nullptr) : ptr(it), map(m) {}
 		~iterator() {}
 
 		/**
@@ -516,8 +511,7 @@ public:
 		 * ++iter
 		 */
 		iterator &operator++() {
-			if(ptr==map->list_tail || ptr==nullptr) throw "invalid";
-			ptr=ptr->next;
+			++ptr;
 			return *this;
 		}
 		/**
@@ -532,8 +526,7 @@ public:
 		 * --iter
 		 */
 		iterator &operator--() {
-			if(ptr==map->list_head->next || ptr==nullptr) throw "invalid";
-			ptr=ptr->prev;
+			--ptr;
 			return *this;
 		}
 
@@ -542,11 +535,10 @@ public:
 		 * throw "star invalid"
 		 */
 		value_type &operator*() const {
-			if(ptr==map->list_tail || ptr==nullptr) throw "invalid";
-			return *(ptr->data_ptr);
+			return *ptr;
 		}
 		value_type *operator->() const noexcept {
-			return ptr->data_ptr;
+			return &(*ptr);
 		}
 
 		/**
@@ -570,7 +562,7 @@ public:
 
 	class const_iterator {
 	private:
-		const Listnode *node;
+		const typename double_list<value_type>::iterator node;
 		const linked_hashmap *map;
 	public:
 		/**
@@ -578,7 +570,7 @@ public:
 		 * add whatever you want
 		 */
 		// --------------------------
-		const_iterator(const Listnode *p = nullptr, const linked_hashmap *m = nullptr) : node(p), map(m) {}
+		const_iterator(typename double_list<value_type>::iterator it = typename double_list<value_type>::iterator(),const linked_hashmap *m = nullptr) : node(it), map(m) {}
 		const_iterator(const const_iterator &it) : node(it.node), map(it.map) {}
 		~const_iterator() {}
 
@@ -594,8 +586,7 @@ public:
 		 * ++iter
 		 */
 		const_iterator &operator++() {
-			if(node==map->list_tail || node==nullptr) throw "invalid";
-			node=node->next;
+			++node;
 			return *this;
 		}
 		/**
@@ -611,8 +602,7 @@ public:
 		 * --iter
 		 */
 		const_iterator &operator--() {
-			if(node==map->list_head->next || node==nullptr) throw "invalid";
-			node=node->prev;
+			--node;
 			return *this;
 		}
 
@@ -621,11 +611,10 @@ public:
 		 * throw
 		 */
 		const value_type &operator*() const {
-			if(node==map->list_tail || node==nullptr) throw "invalid";
-			return *(node->data_ptr);
+			return *node;
 		}
 		const value_type *operator->() const noexcept {
-			return node->data_ptr;
+			return &(*node);
 		}
 
 		/**
@@ -645,27 +634,14 @@ public:
 		}
 	};
 
-	linked_hashmap() {
-		list_head=new Listnode();
-		list_tail=new Listnode();
-		list_head->next=list_tail;
-		list_tail->prev=list_head;
-		list_len=0;
-	}
+	linked_hashmap() {}
 	linked_hashmap(const linked_hashmap &other) {
-		list_head=new Listnode();
-		list_tail=new Listnode();
-		list_head->next=list_tail;
-		list_tail->prev=list_head;
-		list_len=0;
-		for(const_iterator it=other.cbegin();it!=other.cend();++it) {
-			insert(*it);
-		}
+		for(auto it = other.begin(); it != other.end(); ++it) {
+            insert(*it);
+        }
 	}
 	~linked_hashmap() {
 		clear();
-		delete list_head;
-		delete list_tail;
 	}
 	linked_hashmap &operator=(const linked_hashmap &other) {
 		if(this==&other) return *this;
@@ -704,50 +680,43 @@ public:
 	 * inserted and existed element
 	 */
 	iterator begin() {
-		return iterator(list_head->next, this);
+		return iterator(order_list.begin(), this);
 	}
 	const_iterator begin() const {
-		return const_iterator(list_head->next, this);
+		return const_iterator(order_list.begin(), this);
 	}
 	const_iterator cbegin() const {
-    return const_iterator(list_head->next, this);
+    return const_iterator(order_list.begin(), this);
 	}
 
 	const_iterator cend() const {
-    	return const_iterator(list_tail, this);
+    	return const_iterator(order_list.end(), this);
 	}
 	/**
 	 * return an iterator after the last inserted element
 	 */
 	iterator end() {
-		return iterator(list_tail, this);
+		return iterator(order_list.end(), this);
 	}
 	const_iterator end() const {
-		return const_iterator(list_tail, this);
+		return const_iterator(order_list.end(), this);
 	}
 	/**
 	 * if didn't contain anything, return true,
 	 * otherwise false.
 	 */
 	bool empty() const {
-		return list_len==0;
+		return order_list.empty();
 	}
 
 	void clear() {
-		Listnode *p=list_head->next;
-		while(p!=list_tail) {
-			Listnode *next=p->next;
-			delete p;
-			p=next;
-		}
-		list_head->next=list_tail;
-		list_tail->prev=list_head;
-		list_len=0;
+		order_list.clear();
+		pos_map.clear();
 		hashmap<Key, T, Hash, Equal>::clear();
 	}
 
 	size_t size() const {
-		return list_len;
+		return order_list.size();
 	}
 	/**
 	 * insert the value_piar
@@ -762,15 +731,16 @@ public:
 	pair<iterator, bool> insert(const value_type &value) {
 		auto hash_result=hashmap<Key, T, Hash, Equal>::insert(value);
 		if(hash_result.second){
-			Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_tail->prev, list_tail);
-			list_tail->prev->next=new_node;
-			list_tail->prev=new_node;
-			list_len++;
-			hash_result.first.get_ptr()->listnode = new_node;
-			return {iterator(new_node, this), true};
+			 order_list.insert_tail(value);
+            auto last = order_list.end();
+            --last;
+            pos_map.insert({value.first, last});
+            return {iterator(last, this), true};
 		}
 		else{
-			return {find(value.first), false};
+			auto it = find(value.first);
+            it->second = value.second;
+            return {it, false};
 		}
 	}
 	/**
@@ -779,13 +749,9 @@ public:
 	 * throw
 	 */
 	void remove(iterator pos) {
-		if(pos.ptr==list_tail || pos.ptr==nullptr) throw "invalid";
-		Listnode *p=pos.ptr;
-		hashmap<Key, T, Hash, Equal>::remove(p->data_ptr->first);
-		p->prev->next=p->next;
-		p->next->prev=p->prev;
-		delete p;
-		list_len--;
+		pos_map.remove(pos->first);
+		order_list.erase(pos.ptr);
+		hashmap<Key, T, Hash, Equal>::remove(pos->first);
 	}
 	/**
 	 * return how many value_pairs consist of key
@@ -801,23 +767,15 @@ public:
 	 * point at nothing
 	 */
 	iterator find(const Key &key) {
-		auto hash_result=hashmap<Key, T, Hash, Equal>::find(key);
-		if(hash_result==hashmap<Key, T, Hash, Equal>::end()) return end();
-		if(hash_result.get_ptr()->listnode == nullptr) {
-        throw "invalid";
-    }
-		Listnode *list_node = static_cast<Listnode*>(hash_result.get_ptr()->listnode);
-    	return iterator(list_node, this);
+		auto pos_it = pos_map.find(key);
+		if(pos_it == pos_map.end()) return end();
+		return iterator(pos_it->second, this);
 	}
 	const_iterator find(const Key &key) const {
-    auto hash_result = hashmap<Key, T, Hash, Equal>::find(key);
-    if(hash_result == hashmap<Key, T, Hash, Equal>::end()) return end();
-	if(hash_result.get_ptr()->listnode == nullptr) {
-        throw "invalid";
+    	auto pos_it = pos_map.find(key);
+        if(pos_it == pos_map.end()) return end();
+        return const_iterator(pos_it->second, this);
     }
-    Listnode *list_node = static_cast<Listnode*>(hash_result.get_ptr()->listnode);
-    return const_iterator(list_node, this);
-	}
 };
 
 class lru {
