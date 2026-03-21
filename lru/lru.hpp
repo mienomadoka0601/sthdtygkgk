@@ -27,7 +27,7 @@ private:
 		T val;
 		node *prev, *next;
 		node() : prev(nullptr), next(nullptr) {}
-		node (const T &v = T(), node *p = nullptr, node *n = nullptr) : val(v), prev(p), next(n) {}
+		node (const T &v, node *p, node *n) : val(v), prev(p), next(n) {}
 	};
 	node *head, *tail;
 	int len;
@@ -144,6 +144,9 @@ public:
 	iterator begin() {
 		return iterator(head->next, this);
 	}
+	iterator begin() const {
+    	return iterator(head->next, const_cast<double_list*>(this));
+	}
 	/**
 	 * return an iterator to the ending
 	 * in fact, it returns the iterator point to nothing,
@@ -151,6 +154,9 @@ public:
 	 */
 	iterator end() {
 		return iterator(tail, this);
+	}
+	iterator end() const {
+    	return iterator(tail, const_cast<double_list*>(this));
 	}
 	/**
 	 * if the iter didn't point to anything, do nothing,
@@ -172,6 +178,11 @@ public:
 		len--;
 		delete p;
 		return iterator(res, this);
+	}
+	void clear() {
+    	while (!empty()) {
+        	delete_head();
+    	}
 	}
 
 	/**
@@ -562,7 +573,7 @@ public:
 
 	class const_iterator {
 	private:
-		const typename double_list<value_type>::iterator node;
+		typename double_list<value_type>::iterator node;
 		const linked_hashmap *map;
 	public:
 		/**
