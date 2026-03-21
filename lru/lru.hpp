@@ -67,8 +67,6 @@ public:
 		 * you can also add some if needed.
 		 */
 		iterator(node *p = nullptr, double_list *l = nullptr) : ptr(p), list(l) {}
-		iterator() {}
-		iterator(const iterator &t) {}
 		~iterator() {}
 		
 		/**
@@ -136,6 +134,9 @@ public:
 	iterator begin() {
 		return iterator(head->next, this);
 	}
+	const_iterator begin() const {
+		return const_iterator(head->next, this);
+	}
 	/**
 	 * return an iterator to the ending
 	 * in fact, it returns the iterator point to nothing,
@@ -143,6 +144,9 @@ public:
 	 */
 	iterator end() {
 		return iterator(tail, this);
+	}
+	const_iterator end() const {
+		return const_iterator(tail, this);
 	}
 	/**
 	 * if the iter didn't point to anything, do nothing,
@@ -441,7 +445,7 @@ private:
 	struct Listnode{
 		value_type *data_ptr;
 		Listnode *prev, *next;
-		Listnode(const value_type *ptr = nullptr, Listnode *p = nullptr, Listnode *n = nullptr) : data_ptr(ptr), prev(p), next(n) {}
+		Listnode(value_type *ptr = nullptr, Listnode *p = nullptr, Listnode *n = nullptr) : data_ptr(ptr), prev(p), next(n) {}
 	};
 	Listnode *list_head, *list_tail;
 	size_t list_len;
@@ -463,8 +467,6 @@ public:
 		auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
 		if(hash_result.second){
 			Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_head, list_head->next);
-			new_node->prev=list_head;
-			new_node->next=list_head->next;
 			list_head->next->prev=new_node;
 			list_head->next=new_node;
 			list_len++;
@@ -485,8 +487,6 @@ public:
 		 */
 		// --------------------------
 		iterator(Listnode *p = nullptr, linked_hashmap *m = nullptr) : ptr(p), map(m) {}
-		iterator() {}
-		iterator(const iterator &other) {}
 		~iterator() {}
 
 		/**
@@ -565,8 +565,7 @@ public:
 		// --------------------------
 		const_iterator(const Listnode *p = nullptr, const linked_hashmap *m = nullptr) : node(p), map(m) {}
 		const_iterator(const const_iterator &it) : node(it.node), map(it.map) {}
-		const_iterator() {}
-		const_iterator(const iterator &other) {}
+		~const_iterator() {}
 
 		/**
 		 * iter++
@@ -746,7 +745,6 @@ public:
 		auto hash_result=hashmap<Key, T, Hash, Equal>::insert(value);
 		if(hash_result.second){
 			Listnode *new_node = new Listnode(const_cast<value_type*>(&(*(hash_result.first))), list_tail->prev, list_tail);
-			new_node->next=list_tail;
 			list_tail->prev->next=new_node;
 			list_tail->prev=new_node;
 			list_len++;
@@ -775,7 +773,7 @@ public:
 	 * this should only return 0 or 1
 	 */
 	size_t count(const Key &key) const {
-		return const_cast<linked_hashmap*>(this)->find(key) != end() ? 1 : 0;
+		return find(key) != end() ? 1 : 0;
 	}
 	/**
 	 * find the iterator points at the value_pair
@@ -793,6 +791,16 @@ public:
 		}
 		return end();
 	}
+	const_iterator find(const Key &key) const {
+    auto hash_result = hashmap<Key, T, Hash, Equal>::find(key);
+    if(hash_result == hashmap<Key, T, Hash, Equal>::end()) return end();
+    Listnode *p = list_head->next;
+    while(p != list_tail) {
+        if(p->data_ptr == &(*hash_result)) return const_iterator(p, this);
+        p = p->next;
+    }
+    return end();
+}
 };
 
 class lru {
@@ -822,7 +830,7 @@ public:
 		if(it!=memory->end()) {
 			Matrix<int> new_value=value;
 			memory->remove(it);
-			memory->insert({key, new_value});
+			memory->insert_to_front({key, new_value});
 		}
 		else{
 			if(memory->size()>=capacity) {
