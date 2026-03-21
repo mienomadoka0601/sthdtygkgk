@@ -42,7 +42,13 @@ public:
 	 * the follows are constructors and destructors
 	 * you can also add some if needed.
 	 */
-	double_list() {}
+	double_list() {
+		head=new node();
+		tail=new node();
+		head->next=tail;
+		tail->prev=head;
+		len=0;
+	}
 	double_list(const double_list<T> &other) {}
 	~double_list() {}
 
@@ -78,7 +84,7 @@ public:
 		 */
 		iterator &operator++() {
 			
-			if(ptr=list->tail) throw "invalid";
+			if(ptr==list->tail) throw "invalid";
 			ptr=ptr->next;
 			return *this;
 		}
@@ -95,7 +101,7 @@ public:
 		 */
 		iterator &operator--() {
 			
-			if(ptr=list->head) throw "invalid";
+			if(ptr=list->head->next) throw "invalid";
 			ptr=ptr->prev;
 			return *this;
 		}
@@ -229,10 +235,62 @@ private:
 	 * you can also add some if needed.
 	 */
 public:
-	hashmap() {}
-	hashmap(const hashmap &other) {}
-	~hashmap() {}
-	hashmap &operator=(const hashmap &other) {}
+	hashmap() {
+		capacity=16;
+		size=0;
+		load_factor=0.75;
+		table=new node*[capacity];
+		for(size_t i=0;i<capacity;i++) table[i]=nullptr;
+	}
+	hashmap(const hashmap &other) {
+		capacity=other.capacity;
+		size=other.size;
+		load_factor=other.load_factor;
+		hasher=other.hasher;
+		equal=other.equal;
+		table=new node*[capacity];
+		for(size_t i=0;i<capacity;i++) table[i]=nullptr;
+		for(size_t i=0;i<capacity;i++) {
+			node *p=other.table[i];
+			while(p) {
+				node *new_node=new node(p->val, table[i]);
+				table[i]=new_node;
+				p=p->next;
+			}
+		}
+	}
+	~hashmap() {
+		for(size_t i=0;i<capacity;i++) {
+			node *p=table[i];
+			while(p) {
+				node *next=p->next;
+				delete p;
+				p=next;
+			}
+		}
+		delete [] table;
+	}
+	hashmap &operator=(const hashmap &other) {
+		if(this==&other) return *this;
+		capacity=other.capacity;
+		size=other.size;
+		load_factor=other.load_factor;
+		hasher=other.hasher;
+		equal=other.equal;
+		node **new_table=new node*[capacity];
+		for(size_t i=0;i<capacity;i++) new_table[i]=nullptr;
+		for(size_t i=0;i<capacity;i++) {
+			node *p=other.table[i];
+			while(p) {
+				node *new_node=new node(p->val, new_table[i]);
+				new_table[i]=new_node;
+				p=p->next;
+			}
+		}
+		delete [] table;
+		table=new_table;
+		return *this;
+	}
 
 	class iterator {
 	private:
@@ -341,14 +399,14 @@ public:
 		iterator it=find(value_pair.first);
 		if(it!=end()) {
 			it->second=value_pair.second;
-			return sjtu::make_pair(it, false);
+			return sjtu::pair(it, false);
 		}
 		if(size+1>capacity*load_factor) expand();
 		size_t index=hash(value_pair.first);
 		node *p=new node(value_pair, table[index]);
 		table[index]=p;
 		size++;
-		return sjtu::make_pair(iterator(table, p, this), true);
+		return sjtu::pair(iterator(table, p, this), true);
 	}
 	/**
 	 * the value_pair exists, remove and return true
@@ -383,7 +441,7 @@ private:
 		Listnode(const value_type *ptr = nullptr, Listnode *p = nullptr, Listnode *n = nullptr) : data_ptr(ptr), prev(p), next(n) {}
 	};
 	Listnode *list_head, *list_tail;
-	size list_len;
+	size_t list_len;
 public:
 	/**
 	 * elements
@@ -702,9 +760,9 @@ public:
 	 * throw
 	 */
 	void remove(iterator pos) {
-		if(pos==end()) throw "invalid";
-		hashmap<Key, T, Hash, Equal>::remove(p->data_ptr->first);
+		if(pos.ptr==list_tail) throw "invalid";
 		Listnode *p=pos.ptr;
+		hashmap<Key, T, Hash, Equal>::remove(p->data_ptr->first);
 		p->prev->next=p->next;
 		p->next->prev=p->prev;
 		delete p;
@@ -724,8 +782,8 @@ public:
 	 * point at nothing
 	 */
 	iterator find(const Key &key) {
-		iterator it=hashmap<Key, T, Hash, Equal>::find(key);
-		if(it==hashmap<Key, T, Hash, Equal>::end()) return end();
+		auto hash_result=hashmap<Key, T, Hash, Equal>::find(key);
+		if(hash_result==hashmap<Key, T, Hash, Equal>::end()) return end();
 		Listnode *p=list_head->next;
 		while(p!=list_tail) {
 			if(p->data_ptr==&(it->first)) return iterator(p, this);
@@ -755,7 +813,7 @@ public:
 	 * save the value_pair in the memory
 	 * delete something in the memory if necessary
 	 */
-	void save(const value_type &v) const {
+	void save(const value_type &v) {
 		Integer key=v.first;
 		Matrix<int> value=v.second;
 		auto it=memory->find(key);
@@ -779,13 +837,13 @@ public:
 	/**
 	 * return a pointer contain the value
 	 */
-	Matrix<int> *get(const Integer &v) const {
+	Matrix<int> *get(const Integer &v)  {
 		auto it=memory->find(v);
 		if(it==memory->end()) return nullptr;
 		Integer key=it->first;
-		Matrix<int> value=it->second;
+		Matrix<int> val=it->second;
 		memory->remove(it);
-		memory->insert({key, value});
+		memory->insert({key, val});
 		auto new_it=memory->find(key);
 		if(new_it!=memory->end()) return &(new_it->second);
 		else return nullptr;
