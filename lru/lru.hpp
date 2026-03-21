@@ -690,6 +690,13 @@ public:
 	const_iterator begin() const {
 		return const_iterator(list_head->next, this);
 	}
+	const_iterator cbegin() const {
+    return const_iterator(list_head->next, this);
+	}
+
+	const_iterator cend() const {
+    	return const_iterator(list_tail, this);
+	}
 	/**
 	 * return an iterator after the last inserted element
 	 */
