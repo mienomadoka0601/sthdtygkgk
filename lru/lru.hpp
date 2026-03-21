@@ -134,9 +134,6 @@ public:
 	iterator begin() {
 		return iterator(head->next, this);
 	}
-	const_iterator begin() const {
-		return const_iterator(head->next, this);
-	}
 	/**
 	 * return an iterator to the ending
 	 * in fact, it returns the iterator point to nothing,
@@ -144,9 +141,6 @@ public:
 	 */
 	iterator end() {
 		return iterator(tail, this);
-	}
-	const_iterator end() const {
-		return const_iterator(tail, this);
 	}
 	/**
 	 * if the iter didn't point to anything, do nothing,
@@ -315,8 +309,6 @@ public:
 		 * you can also add some if needed.
 		 */
 		iterator(node **t = nullptr, node *p = nullptr, hashmap *m = nullptr) : table(t), ptr(p), map(m) {}
-		iterator() {}
-		iterator(const iterator &t) {}
 		~iterator() {}
 
 		/**
@@ -695,7 +687,7 @@ public:
 	iterator begin() {
 		return iterator(list_head->next, this);
 	}
-	const_iterator cbegin() const {
+	const_iterator begin() const {
 		return const_iterator(list_head->next, this);
 	}
 	/**
@@ -704,7 +696,7 @@ public:
 	iterator end() {
 		return iterator(list_tail, this);
 	}
-	const_iterator cend() const {
+	const_iterator end() const {
 		return const_iterator(list_tail, this);
 	}
 	/**
