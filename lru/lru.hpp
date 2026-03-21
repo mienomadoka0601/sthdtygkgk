@@ -761,9 +761,10 @@ public:
 	 * throw
 	 */
 	void remove(iterator pos) {
-		pos_map.remove(pos->first);
+		Key key=pos->first;
+		pos_map.remove(key);
 		order_list.erase(pos.ptr);
-		hashmap<Key, T, Hash, Equal>::remove(pos->first);
+		hashmap<Key, T, Hash, Equal>::remove(key);
 	}
 	/**
 	 * return how many value_pairs consist of key
