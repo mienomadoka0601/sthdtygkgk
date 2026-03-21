@@ -101,7 +101,7 @@ public:
 		 */
 		iterator &operator--() {
 			
-			if(ptr=list->head->next) throw "invalid";
+			if(ptr==list->head->next) throw "invalid";
 			ptr=ptr->prev;
 			return *this;
 		}
@@ -252,10 +252,13 @@ public:
 		for(size_t i=0;i<capacity;i++) table[i]=nullptr;
 		for(size_t i=0;i<capacity;i++) {
 			node *p=other.table[i];
+			node *tail=nullptr;
 			while(p) {
-				node *new_node=new node(p->val, table[i]);
-				table[i]=new_node;
-				p=p->next;
+				node *new_node = new node(p->val, nullptr);
+    			if(tail) tail->next = new_node;
+    			else table[i] = new_node;
+    			tail = new_node;
+    			p = p->next;
 			}
 		}
 	}
@@ -829,7 +832,7 @@ public:
 					memory->remove(last_it);
 				}
 			}
-			memory->insert({key, value});
+			memory->insert_to_front({key, value});
 		}
 		
 	}
@@ -842,7 +845,7 @@ public:
 		Integer key=it->first;
 		Matrix<int> val=it->second;
 		memory->remove(it);
-		memory->insert({key, val});
+		memory->insert_to_front({key, val});
 		auto new_it=memory->find(key);
 		if(new_it!=memory->end()) return &(new_it->second);
 		else return nullptr;
