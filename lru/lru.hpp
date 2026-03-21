@@ -649,19 +649,17 @@ public:
 	 * if the key not found, throw
 	 */
 	T &at(const Key &key) {
-		iterator it=find(key);
-		if(it==end()) throw "invalid";
-		return it->second;
+    	auto it = find(key);
+    	if (it == end()) throw "invalid";
+    	return it->second;
 	}
 	const T &at(const Key &key) const {
-		auto it=const_cast<linked_hashmap*>(this)->find(key);
-		if(it==end()) throw "invalid";
-		return it->second;
+    	auto it = find(key);
+    	if (it == end()) throw "invalid";
+    	return it->second;
 	}
 	T &operator[](const Key &key) {
-		iterator it=find(key);
-		if(it==end()) throw "invalid";
-		return it->second;
+		return at(key);
 	}
 	const T &operator[](const Key &key) const {
 		return at(key);
@@ -721,22 +719,31 @@ public:
 	 * add a new element and return true
 	 */
 	pair<iterator, bool> insert(const value_type &value) {
-		auto hash_result=hashmap<Key, T, Hash, Equal>::insert(value);
-		if(hash_result.second){
-			 order_list.insert_tail(value);
-            auto last = order_list.end();
-            --last;
-            pos_map.insert({value.first, last});
-            return {iterator(last, this), true};
-		}
-		else{
-			auto it = find(value.first);
-            if(it!=end()) {
-                it->second = value.second;
-            }
-            return {it, false};
-		}
-	}
+    auto pos_it = pos_map.find(value.first);
+    if (pos_it != pos_map.end()) {
+        auto it = pos_it->second;
+        it->second = value.second;
+        value_type data = *it;
+        order_list.erase(it); 
+        pos_map.remove(value.first);
+        order_list.insert_tail(data); 
+        auto last = order_list.end();
+        --last;
+        pos_map.insert({value.first, last});
+        auto base_it = hashmap<Key, T, Hash, Equal>::find(value.first);
+        if (base_it != hashmap<Key, T, Hash, Equal>::end()) {
+            base_it->second = value.second;
+        }
+        return {iterator(last, this), false};
+    } else {
+        hashmap<Key, T, Hash, Equal>::insert(value);
+        order_list.insert_tail(value);
+        auto last = order_list.end();
+        --last;
+        pos_map.insert({value.first, last});
+        return {iterator(last, this), true};
+    }
+}
 	void insert_head(const value_type &value) {
     	auto hash_result = hashmap<Key, T, Hash, Equal>::insert(value);
     	order_list.insert_head(value);
@@ -749,6 +756,7 @@ public:
 	 * throw
 	 */
 	void remove(iterator pos) {
+		if(pos.ptr == order_list.end()) throw "invalid";
 		Key key=pos->first;
 		pos_map.remove(key);
 		order_list.erase(pos.ptr);
@@ -800,15 +808,12 @@ public:
 	 * delete something in the memory if necessary
 	 */
 	void save(const value_type &v) {
-    auto it = memory->find(v.first);
-    if (it != memory->end()) {
-        memory->remove(it);
-    } else if (memory->size() >= capacity && !memory->empty()) {
-        auto last_it = memory->end();
-        --last_it;
-        memory->remove(last_it);
-    }
-    memory->insert_head(v);
+	if (memory->size() >= capacity && memory->find(v.first) == memory->end()) {
+		auto last_it = memory->end();
+		--last_it;
+		memory->remove(last_it);
+	}
+	memory->insert(v);
 }
 	/**
 	 * return a pointer contain the value
@@ -816,12 +821,9 @@ public:
 	Matrix<int> *get(const Integer &v) {
     auto it = memory->find(v);
     if (it == memory->end()) return nullptr;
-    Matrix<int> value = it->second;
-    memory->remove(it);
-    memory->insert_head({v, value});
+    memory->insert({v, it->second});
     auto new_it = memory->find(v);
-    if (new_it != memory->end()) return &(new_it->second);
-    return nullptr;
+    return &(new_it->second);
 }
 	/**
 	 * just print everything in the memory
