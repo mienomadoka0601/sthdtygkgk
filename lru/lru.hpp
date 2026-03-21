@@ -24,10 +24,11 @@ template<class T>
 class double_list {
 private:
 	struct node {
-		T val;
+		T *val;
 		node *prev, *next;
 		node() : prev(nullptr), next(nullptr) {}
-		node (const T &v, node *p, node *n) : val(v), prev(p), next(n) {}
+		node(const T &v, node *p, node *n) : val(new T(v)), prev(p), next(n) {}
+		~node() { delete val; }
 	};
 	node *head, *tail;
 	int len;
@@ -120,7 +121,7 @@ public:
 		 */
 		T &operator*() const {
 			if(ptr==list->tail || ptr==nullptr) throw "invalid";
-			return ptr->val;
+			return *(ptr->val);
 		}
 		
 		/**
@@ -128,7 +129,7 @@ public:
 		 */
 		T *operator->() const noexcept {
 			if(ptr==list->tail || ptr==nullptr) throw "invalid";
-			return &(ptr->val);
+			return ptr->val;
 		}
 		bool operator==(const iterator &rhs) const {
 			return ptr==rhs.ptr;
