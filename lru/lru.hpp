@@ -481,6 +481,7 @@ public:
 	private:
 		typename double_list<value_type>::iterator ptr;
 		linked_hashmap *map;
+		friend class const_iterator;
 	public:
 		/**
 		 * elements
@@ -543,10 +544,10 @@ public:
 			return ptr!=rhs.ptr;
 		}
 		bool operator==(const const_iterator &rhs) const {
-			return ptr==rhs.ptr;
+			return ptr==rhs.node;
 		}
 		bool operator!=(const const_iterator &rhs) const {
-			return ptr!=rhs.ptr;
+			return ptr!=rhs.node;
 		}
 		friend class const_iterator;
 		friend class linked_hashmap;
@@ -556,6 +557,7 @@ public:
 	private:
 		typename double_list<value_type>::iterator node;
 		const linked_hashmap *map;
+		friend class iterator;
 	public:
 		/**
 		 * elements
@@ -564,6 +566,7 @@ public:
 		// --------------------------
 		const_iterator(typename double_list<value_type>::iterator it = typename double_list<value_type>::iterator(),const linked_hashmap *m = nullptr) : node(it), map(m) {}
 		const_iterator(const const_iterator &it) : node(it.node), map(it.map) {}
+		const_iterator(const iterator &it) : node(it.ptr), map(it.map) {}
 		~const_iterator() {}
 
 		/**
@@ -808,12 +811,11 @@ public:
 	 * delete something in the memory if necessary
 	 */
 	void save(const value_type &v) {
-	if (memory->size() >= capacity && memory->find(v.first) == memory->end()) {
-		auto last_it = memory->end();
-		--last_it;
-		memory->remove(last_it);
-	}
-	memory->insert(v);
+    if (memory->size() >= capacity && memory->find(v.first) == memory->end()) {
+        auto head_it = memory->begin();
+        memory->remove(head_it);
+    }
+    memory->insert(v);
 }
 	/**
 	 * return a pointer contain the value
